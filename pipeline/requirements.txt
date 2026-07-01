@@ -1,0 +1,32 @@
+﻿# ─── Ingesta ──────────────────────────────────────────────────────────────────
+sodapy==2.2.0
+requests==2.31.0
+
+# ─── Transformación ───────────────────────────────────────────────────────────
+pandas>=2.2.0
+geopandas>=0.14.3
+shapely>=2.0.3
+pyproj>=3.6.1
+osmnx>=1.9.1
+openpyxl>=3.1.2
+
+# ─── Modelado ─────────────────────────────────────────────────────────────────
+numpy>=2.0.0
+scikit-learn>=1.4.0
+xgboost>=2.0.3
+# AHP implementado manualmente en pipeline/calculo/ahp.py
+
+# ─── Base de datos ────────────────────────────────────────────────────────────
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.27
+geoalchemy2>=0.14.6
+
+# ─── Almacenamiento staging ───────────────────────────────────────────────────
+pyarrow>=15.0.0
+fastparquet>=2024.2.0
+
+# ─── Utilidades ───────────────────────────────────────────────────────────────
+python-dotenv>=1.0.1
+loguru>=0.7.2
+tqdm>=4.66.2
+pydantic>=2.6.1
