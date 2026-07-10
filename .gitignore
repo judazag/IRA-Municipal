@@ -1,0 +1,54 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+env/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# Datos — nunca subir al repo
+data/01_raw/
+data/02_intermediate/
+data/03_primary/
+data/04_model_output/
+*.parquet
+*.csv
+*.xlsx
+*.zip
+*.sav
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Modelos entrenados pesados
+models/*.pkl
+models/*.joblib
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
