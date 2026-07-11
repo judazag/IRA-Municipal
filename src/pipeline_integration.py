@@ -56,7 +56,7 @@ def descargar_poligonos_municipales() -> gpd.GeoDataFrame:
     import io
     import requests
 
-    tmp = ROOT / "data/01_raw/mgn_temp"
+    tmp = MGN_CACHE
     shp = tmp / "MGN_ADM_MPIO_GRAFICO.shp"
 
     # Descargar solo si no existe
