@@ -6,6 +6,8 @@ import 'leaflet/dist/leaflet.css'
 type Props = {
   onSelect?: (data: any) => void
   query?: string
+  anio?: number
+  escenario?: string
 }
 
 const AnyMapContainer = MapContainer as any
@@ -66,15 +68,17 @@ function GeojsonLayer({ data, onSelect }: { data: any; onSelect?: (data: any) =>
   return null
 }
 
-export default function Map({ onSelect, query }: Props) {
+export default function Map({ onSelect, query, anio = 2024, escenario = 'Base' }: Props) {
   const [geojson, setGeojson] = useState<any>(null)
   const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000'
 
   useEffect(() => {
     const loadGeojson = async () => {
       try {
-        const url = new URL(`${apiBase}/municipios/geojson`)
+        const url = new URL(`${apiBase}/timeline/geojson`)
         if (query) url.searchParams.set('q', query)
+        url.searchParams.set('anio', String(anio))
+        if (escenario) url.searchParams.set('escenario', escenario)
         const res = await fetch(url.toString())
         const data = await res.json()
         setGeojson(data)
@@ -84,7 +88,7 @@ export default function Map({ onSelect, query }: Props) {
     }
 
     loadGeojson()
-  }, [apiBase, query])
+  }, [apiBase, query, anio, escenario])
 
   return (
     <AnyMapContainer center={[4.0, -74.5]} zoom={5} style={{ width: '100%', height: '100%' }}>
