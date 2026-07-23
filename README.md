@@ -29,7 +29,7 @@ acceso logístico, vulnerabilidad climática y condición socioeconómica.
 
 ## 🏗️ Arquitectura
 
-'''
+```bash
 datos.gov.co / DANE / NOAA ONI
 ↓ sodapy / requests
 02_intermediate/ — 19 fuentes limpias (175 MB)
@@ -40,11 +40,11 @@ datos.gov.co / DANE / NOAA ONI
 ↓ FastAPI
 API REST → Mapa interactivo → Usuario final
 
-'''
+```
 
 ## 📁 Estructura del Repositorio
 
-'''
+```bash
 ira-municipal/
 ├── notebooks/ # Pipeline CRISP-DM
 │ ├── 00_comprension_negocio.ipynb
@@ -59,7 +59,8 @@ ira-municipal/
 ├── data/ # Pipeline de datos
 ├── reports/ # Gráficas y CSVs
 └── docs/ # Documentación
-'''
+```
+
 ## ⚙️ Instalación
 
 ```bash
@@ -96,7 +97,7 @@ jupyter nbconvert --to notebook --execute notebooks/05_reportes_automaticos.ipyn
 
 ## 📡 API Endpoints
 
-'''
+```bash
 
 GET /municipios — Lista municipios con IRA
 GET /municipios/geojson — GeoJSON para el mapa
@@ -107,7 +108,7 @@ GET /timeline/geojson?escenario=Base&anio=2024 — Mapa por año
 GET /alertas — Municipios en alerta
 GET /metrics — Métricas nacionales
 
-'''
+```
 
 ## 🔮 Proyección 2025-2029
 
