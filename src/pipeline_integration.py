@@ -36,7 +36,9 @@ logger = get_logger("pipeline_integration")
 ROOT         = Path(__file__).parent.parent
 INTERMEDIATE = ROOT / config.paths.intermediate
 PRIMARY      = ROOT / config.paths.primary
+MGN_CACHE    = ROOT / config.paths.raw / "mgn_temp"
 PRIMARY.mkdir(parents=True, exist_ok=True)
+MGN_CACHE.mkdir(parents=True, exist_ok=True)
 
 # ─── POLÍGONOS MUNICIPALES ────────────────────────────────────────────────────
 

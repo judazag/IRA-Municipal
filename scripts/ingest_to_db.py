@@ -30,7 +30,7 @@ except Exception:
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--parquet", default="data/03_primary/municipio_features.parquet")
+    p.add_argument("--parquet", default="data/04_model_output/ira_municipal_final.parquet")
     p.add_argument("--db-url", default=None)
     p.add_argument("--batch", type=int, default=500)
     args = p.parse_args()
@@ -64,13 +64,20 @@ def main():
             # copy known columns if present
             if 'municipio' in row.index:
                 mf.municipio = row.get('municipio')
-            if 'ira_score' in row.index:
+            if 'ira_score' in row.index and not pd.isna(row.get('ira_score')):
                 try:
-                    mf.ira_score = float(row.get('ira_score')) if not pd.isna(row.get('ira_score')) else None
+                    mf.ira_score = float(row.get('ira_score'))
                 except Exception:
                     mf.ira_score = None
-            if 'ira_level' in row.index:
+            elif 'ira_riesgo' in row.index and not pd.isna(row.get('ira_riesgo')):
+                try:
+                    mf.ira_score = float(row.get('ira_riesgo'))
+                except Exception:
+                    mf.ira_score = None
+            if 'ira_level' in row.index and not pd.isna(row.get('ira_level')):
                 mf.ira_level = row.get('ira_level')
+            elif 'nivel_ira' in row.index and not pd.isna(row.get('nivel_ira')):
+                mf.ira_level = row.get('nivel_ira')
 
             # sample numeric fields
             if 'produccion_total_ton' in row.index:
@@ -102,7 +109,7 @@ def main():
                     # skip geometry if unable to convert
                     mf.geom = None
 
-            session.add(mf)
+            session.merge(mf)
             inserted += 1
             if inserted % args.batch == 0:
                 session.commit()

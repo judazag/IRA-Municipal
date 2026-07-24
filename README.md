@@ -22,6 +22,12 @@
 - **Andres Felipe Poveda Bellon** 
 - **Estefanía Marín Páez** 
 
+## Despliegue en desarrollo:
+- ontend con node:
+npm run dev
+- ckend con docker compose (base de datos y backend al tiempo)
+docker compose up -d --build --force-recreate 
+
 ## 📄 Licencia
 
 MIT License — Ver [LICENSE](LICENSE)

@@ -47,8 +47,8 @@ def _project_root() -> Path:
 def _parquet_candidates(*names: str) -> List[Path]:
     root = _project_root()
     directories = [
-        root / "data" / "03_primary",
         root / "data" / "04_model_output",
+        root / "data" / "03_primary",
         root / "data" / "02_intermediate",
         root / "data",
     ]
@@ -169,8 +169,10 @@ def _row_to_dict(row: pd.Series) -> Dict[str, Any]:
 
 
 def _get_municipios_df() -> Optional[pd.DataFrame]:
-    df = getattr(app.state, "municipios_df", None) or getattr(app.state, "df", None)
-    return _normalize_dataframe(df)
+    municipios_df = getattr(app.state, "municipios_df", None)
+    if municipios_df is not None:
+        return _normalize_dataframe(municipios_df)
+    return _normalize_dataframe(getattr(app.state, "df", None))
 
 
 def _get_timeline_df() -> Optional[pd.DataFrame]:
@@ -186,6 +188,29 @@ def _get_eva_df() -> Optional[pd.DataFrame]:
 def _get_cultivos_df() -> Optional[pd.DataFrame]:
     df = getattr(app.state, "cultivos_df", None)
     return _normalize_dataframe(df)
+
+
+def _get_cultivos_or_eva_df() -> Optional[pd.DataFrame]:
+    cultivos_df = _get_cultivos_df()
+    eva_df = _get_eva_df()
+
+    if cultivos_df is not None and not cultivos_df.empty:
+        return cultivos_df
+    if eva_df is not None and not eva_df.empty:
+        return eva_df
+    return cultivos_df if cultivos_df is not None else eva_df
+
+
+def _get_municipio_cultivos_df() -> Optional[pd.DataFrame]:
+    cultivos_df = _get_cultivos_df()
+    if cultivos_df is not None and not cultivos_df.empty and "divipola" in cultivos_df.columns:
+        return cultivos_df
+
+    eva_df = _get_eva_df()
+    if eva_df is not None and not eva_df.empty and "divipola" in eva_df.columns:
+        return eva_df
+
+    return None
 
 
 def _get_alertas_df() -> Optional[pd.DataFrame]:
@@ -217,26 +242,26 @@ def load_data() -> None:
         use_db = False
 
     app.state.use_db = bool(use_db) and MunicipioFeatures is not None
+    app.state.df = None
+    app.state.municipios_df = _normalize_dataframe(
+        _load_parquet_if_available("ira_municipal_final.parquet", "municipio_features.parquet")
+    )
+    app.state.timeline_df = _normalize_dataframe(
+        _load_parquet_if_available("ira_timeline_completo.parquet")
+    )
+    app.state.eva_df = _normalize_dataframe(
+        _load_parquet_if_available("eva_historico_municipios.parquet", "eva_limpia.parquet")
+    )
+    app.state.cultivos_df = _normalize_dataframe(
+        _load_parquet_if_available("cultivos_proyeccion_2029.parquet")
+    )
+    app.state.alertas_df = _normalize_dataframe(
+        _load_parquet_if_available("alertas_municipios.parquet")
+    )
+    app.state.poligonos_df = _normalize_dataframe(
+        _load_parquet_if_available("poligonos_municipales.parquet")
+    )
     if not app.state.use_db:
-        app.state.df = None
-        app.state.municipios_df = _normalize_dataframe(
-            _load_parquet_if_available("ira_municipal_final.parquet", "municipio_features.parquet")
-        )
-        app.state.timeline_df = _normalize_dataframe(
-            _load_parquet_if_available("ira_timeline_completo.parquet")
-        )
-        app.state.eva_df = _normalize_dataframe(
-            _load_parquet_if_available("eva_limpia.parquet")
-        )
-        app.state.cultivos_df = _normalize_dataframe(
-            _load_parquet_if_available("cultivos_proyeccion_2029.parquet")
-        )
-        app.state.alertas_df = _normalize_dataframe(
-            _load_parquet_if_available("alertas_municipios.parquet")
-        )
-        app.state.poligonos_df = _normalize_dataframe(
-            _load_parquet_if_available("poligonos_municipales.parquet")
-        )
         app.state.df = app.state.municipios_df
 
 
@@ -448,24 +473,39 @@ def municipio_dimensiones(divipola: str, db: Session = Depends(get_db)) -> Dict[
 
 @app.get("/municipios/{divipola}/cultivos")
 def municipio_cultivos(divipola: str) -> Dict[str, Any]:
-    df = _get_cultivos_df() or _get_eva_df()
+    df = _get_municipio_cultivos_df()
     if df is None:
         raise HTTPException(status_code=503, detail="Data not available")
 
-    sub = df[df["divipola"].astype(str) == str(divipola)].copy() if "divipola" in df.columns else pd.DataFrame()
+    sub = df[df["divipola"].astype(str) == str(divipola)].copy()
     if sub.empty:
         raise HTTPException(status_code=404, detail="Municipio not found")
 
     year = 2024
     if "anio" in sub.columns:
         sub = sub[sub["anio"].astype(str) == str(year)]
-    if sub.empty and "anio" in df.columns:
-        sub = df[df["divipola"].astype(str) == str(divipola)].copy()
+        if sub.empty:
+            sub = df[df["divipola"].astype(str) == str(divipola)].copy()
 
     if sub.empty:
         return {"divipola": divipola, "anio": year, "cultivos": []}
 
-    value_col = next((col for col in ["produccion_total_ton", "valor", "produccion", "volumen", "cantidad", "area_sembrada_ha"] if col in sub.columns), None)
+    value_col = next(
+        (
+            col
+            for col in [
+                "produccion_total_ton",
+                "valor",
+                "produccion",
+                "produccion_ton",
+                "volumen",
+                "cantidad",
+                "area_sembrada_ha",
+            ]
+            if col in sub.columns
+        ),
+        None,
+    )
     if value_col is None:
         grouped = sub.groupby("cultivo", dropna=False).size().reset_index(name="registros")
         grouped = grouped.sort_values(["registros", "cultivo"], ascending=[False, True])
@@ -494,15 +534,30 @@ def municipio_cultivos(divipola: str) -> Dict[str, Any]:
 
 @app.get("/municipios/{divipola}/cultivos/historico")
 def municipio_cultivos_historico(divipola: str) -> Dict[str, Any]:
-    df = _get_cultivos_df() or _get_eva_df()
+    df = _get_municipio_cultivos_df()
     if df is None:
         raise HTTPException(status_code=503, detail="Data not available")
 
-    sub = df[df["divipola"].astype(str) == str(divipola)].copy() if "divipola" in df.columns else pd.DataFrame()
+    sub = df[df["divipola"].astype(str) == str(divipola)].copy()
     if sub.empty:
         raise HTTPException(status_code=404, detail="Municipio not found")
 
-    value_col = next((col for col in ["produccion_total_ton", "valor", "produccion", "volumen", "cantidad", "area_sembrada_ha"] if col in sub.columns), None)
+    value_col = next(
+        (
+            col
+            for col in [
+                "produccion_total_ton",
+                "valor",
+                "produccion",
+                "produccion_ton",
+                "volumen",
+                "cantidad",
+                "area_sembrada_ha",
+            ]
+            if col in sub.columns
+        ),
+        None,
+    )
     if "anio" not in sub.columns:
         return {"divipola": divipola, "serie": []}
 
@@ -573,7 +628,7 @@ def timeline(escenario: Optional[str] = Query(None), anio: Optional[int] = Query
 
 @app.get("/cultivos/riesgo")
 def cultivos_riesgo(anio: Optional[int] = Query(None), escenario: Optional[str] = Query(None)) -> Dict[str, Any]:
-    df = _get_cultivos_df() or _get_eva_df()
+    df = _get_cultivos_or_eva_df()
     if df is None:
         raise HTTPException(status_code=503, detail="Data not available")
 
@@ -604,14 +659,19 @@ def cultivos_riesgo(anio: Optional[int] = Query(None), escenario: Optional[str] 
 
 @app.get("/alertas/municipio/{divipola}")
 def alerta_municipio(divipola: str) -> Dict[str, Any]:
-    df = _get_alertas_df()
-    if df is None:
-        df = _get_municipios_df()
+    alertas_df = _get_alertas_df()
+    municipios_df = _get_municipios_df()
 
-    if df is None:
+    if alertas_df is None and municipios_df is None:
         raise HTTPException(status_code=503, detail="Data not available")
 
-    sub = df[df["divipola"].astype(str) == str(divipola)].copy() if "divipola" in df.columns else pd.DataFrame()
+    sub = pd.DataFrame()
+    if alertas_df is not None and "divipola" in alertas_df.columns:
+        sub = alertas_df[alertas_df["divipola"].astype(str) == str(divipola)].copy()
+
+    if sub.empty and municipios_df is not None and "divipola" in municipios_df.columns:
+        sub = municipios_df[municipios_df["divipola"].astype(str) == str(divipola)].copy()
+
     if sub.empty:
         raise HTTPException(status_code=404, detail="Municipio not found")
 
